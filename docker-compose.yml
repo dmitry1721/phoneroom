@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+
+  backend:
+    build:
+      args:
+        user: admin
+        uid: 1000
+      context: .
+      dockerfile: ./_docker/backend/Dockerfile
+    restart: unless-stopped
+#    extra_hosts:
+#      - "search.local:127.0.0.1"
+    env_file:
+      - phoneroom_back/.env
+    tty: true
+    expose:
+      - 8000
+    ports:
+      - "8000:8000"
+    networks:
+      net:
+        ipv4_address: 192.168.200.3
+    volumes:
+      - ./phoneroom_back:/var/www/back
+      - ./_docker/backend/php.ini:/usr/local/etc/php/php.ini
+
+  nginx-front:
+    image: nginx:latest
+    restart: unless-stopped
+    tty: true
+    networks:
+      net:
+        ipv4_address: 192.168.200.2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./phoneroom_client:/var/www/front
+      - ./_docker/nginx/nginx-front.conf:/etc/nginx/conf.d/nginx-front.conf
+    links:
+      - frontend
+
+  nginx-back:
+    image: nginx:latest
+    restart: unless-stopped
+    tty: true
+    networks:
+      net:
+        ipv4_address: 192.168.200.4
+#    ports:
+#      - "8000:80"
+#      - "8000:443"
+    volumes:
+      - ./phoneroom_back:/var/www/back
+      - ./_docker/nginx/nginx-back.conf:/etc/nginx/conf.d/nginx-back.conf
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./_docker/nodejs/Dockerfile
+    tty: true
+    extra_hosts:
+      - "search.local:127.0.0.1"
+    env_file:
+      - phoneroom_client/.env
+    networks:
+      net:
+        ipv4_address: 192.168.200.5
+    expose:
+      - 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./phoneroom_client:/var/www/front
+
+networks:
+  net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.200.0/24
